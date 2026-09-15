@@ -6,6 +6,10 @@ export default defineNuxtConfig({
     devtools: {
         enabled: true
     },
+    modules: ['@nuxtjs/color-mode'],
+    imports: {
+        dirs: ['validation']
+    },
     css: ['~/assets/css/main.css'],
     vite: {
         plugins: [
