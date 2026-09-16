@@ -6,7 +6,7 @@ export default defineNuxtConfig({
     devtools: {
         enabled: true
     },
-    modules: ['@nuxtjs/color-mode'],
+    modules: ['@nuxtjs/color-mode', 'nuxt-auth-utils', '@vee-validate/nuxt'],
     imports: {
         dirs: ['validation']
     },
