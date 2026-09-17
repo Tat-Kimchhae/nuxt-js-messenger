@@ -1,9 +1,9 @@
 import type {User} from "@prisma/client";
 
 export const sanitizeUser = (user: User) => {
-    if (!user) return null;
+  if (!user) return null;
 
-    delete user.hashedPassword;
+  const {hashedPassword, ...sanitized} = user;
 
-    return user;
-}
+  return sanitized;
+};

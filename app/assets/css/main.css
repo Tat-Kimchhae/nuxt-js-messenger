@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 @import "vue-sonner/style.css"; /* Add this line */
 
@@ -17,4 +18,139 @@
 
 ::view-transition-old(root) {
     z-index: 1;
+}
+
+@theme {
+    --font-sans: 'Space Grotesk', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --color-ink: var(--theme-ink);
+    --color-ink-dim: var(--theme-ink-dim);
+    --color-ink-faint: var(--theme-ink-faint);
+    --color-void: var(--theme-void);
+    --color-panel: var(--theme-panel);
+    --color-panel-raised: var(--theme-panel-raised);
+    --color-line: var(--theme-line);
+    --color-plum: var(--theme-plum);
+    --color-coral: var(--theme-coral);
+    --color-mint: var(--theme-mint);
+    --color-surface-sidebar: var(--theme-surface-sidebar);
+    --color-surface-chat: var(--theme-surface-chat);
+    --color-surface-popover: var(--theme-surface-popover);
+}
+
+:root {
+    --theme-ink: #211e2a;
+    --theme-ink-dim: #6d6979;
+    --theme-ink-faint: #9a96a8;
+    --theme-void: #f5f3fa;
+    --theme-panel: #ffffff;
+    --theme-panel-raised: #f0eef7;
+    --theme-line: #e5e2ed;
+    --theme-plum: #7656dc;
+    --theme-coral: #ec755f;
+    --theme-mint: #2e9b81;
+    --theme-surface-sidebar: #faf9fd;
+    --theme-surface-chat: #fcfbff;
+    --theme-surface-popover: #ffffff;
+    /*font-family: 'Space Grotesk', sans-serif;*/
+    font-family: 'Inter', sans-serif;
+    color: var(--theme-ink);
+    background: var(--theme-void);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+}
+
+.dark {
+    --theme-ink: #f6f5f2;
+    --theme-ink-dim: #9b9ba6;
+    --theme-ink-faint: #656572;
+    --theme-void: #101014;
+    --theme-panel: #17171d;
+    --theme-panel-raised: #202027;
+    --theme-line: #2a2a33;
+    --theme-plum: #b49bff;
+    --theme-coral: #ff8975;
+    --theme-mint: #87e6ce;
+    --theme-surface-sidebar: #141419;
+    --theme-surface-chat: #19191f;
+    --theme-surface-popover: #24242b;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    min-height: 100%;
+    margin: 0;
+}
+
+body {
+    min-width: 320px;
+    background: var(--theme-void);
+    color: var(--theme-ink);
+}
+
+button,
+input,
+textarea {
+    font: inherit;
+}
+
+button {
+    cursor: pointer;
+}
+
+::selection {
+    color: var(--theme-void);
+    background: var(--theme-plum);
+}
+
+.scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--theme-ink-faint) 45%, transparent) transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+    width: 5px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--theme-ink-faint) 45%, transparent);
+}
+
+.noise::after {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    opacity: .025;
+    content: '';
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+
+.message-enter {
+    animation: message-enter .28s cubic-bezier(.2,.75,.25,1) both;
+}
+
+@keyframes message-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.presence-pulse {
+    animation: presence-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes presence-pulse {
+    0%, 100% { opacity: .75; }
+    50% { opacity: 1; }
+}
+
+textarea::-webkit-scrollbar {
+    width: 0;
 }
