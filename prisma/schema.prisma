@@ -1,6 +1,5 @@
 generator client {
-  provider        = "prisma-client-js"
-  // previewFeatures = ["driverAdapters"]
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -19,6 +18,9 @@ model User {
   conversations Conversation[]
   messages      Message[]
   oauthAccounts OauthAccount[]
+
+  sentFriendRequests     FriendRequest[] @relation("SentFriendRequests")
+  receivedFriendRequests FriendRequest[] @relation("ReceivedFriendRequests")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,4 +61,25 @@ model Message {
 
   senderId String
   sender   User   @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+enum FriendRequestStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+model FriendRequest {
+  id         String              @id @default(cuid())
+  senderId   String
+  receiverId String
+  status     FriendRequestStatus @default(PENDING)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  sender   User @relation("SentFriendRequests", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedFriendRequests", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, receiverId])
+  @@index([receiverId, status])
 }

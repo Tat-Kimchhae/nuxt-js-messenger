@@ -15,9 +15,12 @@ defineProps<{ name: string; size?: number }>();
     <template v-else-if="name === 'smile'"><circle cx="12" cy="12" r="8" /><path d="M8.5 14.5s1.2 2 3.5 2 3.5-2 3.5-2M9 10h.01M15 10h.01" /></template>
     <template v-else-if="name === 'paperclip'"><path d="m20.5 11.5-7.8 7.8a5 5 0 0 1-7.1-7.1l8.5-8.5a3.5 3.5 0 0 1 5 5L10.5 17a2 2 0 0 1-2.8-2.8l8.5-8.5" /></template>
     <template v-else-if="name === 'send'"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></template>
-     <template v-else-if="name === 'close'"><path d="m6 6 12 12M18 6 6 18" /></template>
-     <template v-else-if="name === 'sun'"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></template>
-     <template v-else-if="name === 'moon'"><path d="M20.7 15.1A8.6 8.6 0 0 1 8.9 3.3 8.7 8.7 0 1 0 20.7 15.1Z" /></template>
+    <template v-else-if="name === 'close'"><path d="m6 6 12 12M18 6 6 18" /></template>
+    <template v-else-if="name === 'sun'"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42" /></template>
+    <template v-else-if="name === 'moon'"><path d="M20.7 15.1A8.6 8.6 0 0 1 8.9 3.3 8.7 8.7 0 1 0 20.7 15.1Z" /></template>
+    <template v-else-if="name === 'user-plus'"><path d="M15 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 3 18.5V20" /><circle cx="9" cy="7" r="3.5" /><path d="M19 8v6M16 11h6" /></template>
+    <template v-else-if="name === 'users'"><path d="M16 20v-1.5a4.5 4.5 0 0 0-4.5-4.5h-3A4.5 4.5 0 0 0 4 18.5V20" /><circle cx="10" cy="7" r="3.5" /><path d="M16 4.5a3.5 3.5 0 0 1 0 6.8M20 20v-1.5a4.5 4.5 0 0 0-3-4.2" /></template>
+    <template v-else-if="name === 'check'"><path d="m5 12 4 4L19 6" /></template>
     <template v-else-if="name === 'message'"><path d="M20 11.5a7 7 0 0 1-7.5 7 8 8 0 0 1-3.2-.7L4 19l1.4-4.3a7 7 0 1 1 14.6-3.2Z" /></template>
     <template v-else-if="name === 'bell-off'"><path d="M13.7 19a2 2 0 0 1-3.4 0M18 9a6 6 0 0 0-9.4-5M6.3 6.3A6 6 0 0 0 6 9c0 7-3 7-3 8h14M3 3l18 18" /></template>
   </svg>

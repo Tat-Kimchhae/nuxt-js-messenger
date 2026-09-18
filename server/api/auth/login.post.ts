@@ -1,10 +1,9 @@
 import prisma from "~~/server/utils/prisma.ts";
-import {loginSchema} from "~/validation/auth";
+import { loginSchema } from "~/validation/auth";
 
 export default defineEventHandler(async (event) => {
-  const {email, password} = await readValidatedBody(
-    event,
-    (body) => loginSchema.parse(body),
+  const { email, password } = await readValidatedBody(event, (body) =>
+    loginSchema.parse(body),
   ).catch((err) => {
     throw createError({
       statusCode: 422,
@@ -15,7 +14,7 @@ export default defineEventHandler(async (event) => {
 
   try {
     const user = await prisma.user.findUnique({
-      where: {email: email.toLowerCase()},
+      where: { email: email.toLowerCase() },
     });
 
     if (!user) {
@@ -25,12 +24,14 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    const isValid = user?.hashedPassword ? await verifyPassword(user.hashedPassword, password) : false;
+    const isValid = user?.hashedPassword
+      ? await verifyPassword(user.hashedPassword, password)
+      : false;
     if (!isValid) {
       throw createError({
         statusCode: 400,
-        statusMessage: "Invalid Credentials"
-      })
+        statusMessage: "Invalid Credentials",
+      });
     }
 
     const sanitizedUser = sanitizeUser(user);
