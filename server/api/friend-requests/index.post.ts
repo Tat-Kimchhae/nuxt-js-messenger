@@ -19,6 +19,7 @@ export default defineEventHandler(async (event) => {
       });
     }
 
+    // index.post.ts — replace the existingRequest block
     const existingRequest = await prisma.friendRequest.findFirst({
       where: {
         OR: [
@@ -29,12 +30,22 @@ export default defineEventHandler(async (event) => {
     });
 
     if (existingRequest) {
-      throw createError({
-        statusCode: 409,
-        statusMessage:
-          existingRequest.status === "ACCEPTED"
-            ? "Already friends"
-            : "A friend request already exists between these users",
+      if (existingRequest.status === "ACCEPTED") {
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Already friends",
+        });
+      }
+      if (existingRequest.status === "PENDING") {
+        throw createError({
+          statusCode: 409,
+          statusMessage: "Request already pending",
+        });
+      }
+      // DECLINED — allow retry, flip sender/receiver back to current direction
+      return await prisma.friendRequest.update({
+        where: { id: existingRequest.id },
+        data: { senderId, receiverId, status: "PENDING" },
       });
     }
 

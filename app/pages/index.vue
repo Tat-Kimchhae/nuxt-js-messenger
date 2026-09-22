@@ -223,6 +223,13 @@ function backToList() {
   showConversation.value = false;
 }
 
+const { clear } = useUserSession()
+
+async function handleLogout() {
+  await clear()
+  await navigateTo('/login')
+}
+
 watch(activeId, () => {
   nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 }));
 });
@@ -231,11 +238,11 @@ watch(activeId, () => {
 <template>
   <main class="noise min-h-[100dvh] overflow-hidden bg-void text-ink">
     <div class="mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col p-0 sm:p-3 lg:p-5">
-      <div class="flex min-h-[100dvh] flex-1 overflow-hidden border-line bg-panel sm:min-h-0 sm:rounded-[26px] sm:border sm:shadow-2xl sm:shadow-black/20">
+      <div
+        class="flex min-h-[100dvh] flex-1 overflow-hidden border-line bg-panel sm:min-h-0 sm:rounded-[26px] sm:border sm:shadow-2xl sm:shadow-black/20">
         <aside
           class="flex w-full shrink-0 flex-col border-r border-line bg-surface-sidebar dark:bg-[#141419] md:w-[320px] lg:w-[364px]"
-          :class="showConversation ? 'hidden md:flex' : 'flex'"
-        >
+          :class="showConversation ? 'hidden md:flex' : 'flex'">
           <div class="border-b border-line px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
             <div class="mb-7 flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -246,30 +253,44 @@ watch(activeId, () => {
                 </div>
               </div>
               <div class="flex items-center gap-1">
-                <button data-testid="button-toggle-theme" class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum" :aria-label="colorMode.value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" :title="colorMode.value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" @click="toggleColorMode">
+                <button data-testid="button-toggle-theme"
+                  class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum"
+                  :aria-label="colorMode.value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+                  :title="colorMode.value === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'"
+                  @click="toggleColorMode">
                   <AppIcon :name="colorMode.value === 'dark' ? 'sun' : 'moon'" :size="16" />
                 </button>
-                <button data-testid="button-add-friend" class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum" title="Add a friend" aria-label="Add a friend" @click="showFriendPanel = true">
+                <button data-testid="button-add-friend"
+                  class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum"
+                  title="Add a friend" aria-label="Add a friend" @click="showFriendPanel = true">
                   <AppIcon name="user-plus" :size="16" />
                 </button>
-                <button data-testid="button-new-message" class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum" title="New message">
+                <button data-testid="button-new-message"
+                  class="grid h-9 w-9 place-items-center rounded-full border border-line text-ink-dim transition hover:border-plum hover:text-plum dark:hover:border-plum dark:hover:text-plum"
+                  title="New message">
                   <AppIcon name="edit" :size="16" />
                 </button>
               </div>
             </div>
-            <label class="flex h-11 items-center gap-3 rounded-[13px] border border-line bg-void/70 px-3.5 text-ink-dim transition focus-within:border-plum/60">
+            <label
+              class="flex h-11 items-center gap-3 rounded-[13px] border border-line bg-void/70 px-3.5 text-ink-dim transition focus-within:border-plum/60">
               <AppIcon name="search" :size="17" />
-              <input v-model="search" data-testid="input-search-conversations" class="w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-faint" placeholder="Search conversations" type="search" />
+              <input v-model="search" data-testid="input-search-conversations"
+                class="w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-faint"
+                placeholder="Search conversations" type="search" />
               <span v-if="search" class="font-mono text-[10px] text-ink-faint">{{ filteredConversations.length }}</span>
             </label>
           </div>
 
           <div class="flex items-center justify-between px-6 pb-2 pt-5">
             <span class="font-mono text-[10px] uppercase tracking-[.16em] text-ink-faint">Recent</span>
-            <button data-testid="button-filter-conversations" class="text-ink-faint transition hover:text-ink" title="Filter conversations"><AppIcon name="sliders" :size="14" /></button>
+            <button data-testid="button-filter-conversations" class="text-ink-faint transition hover:text-ink"
+              title="Filter conversations">
+              <AppIcon name="sliders" :size="14" />
+            </button>
           </div>
           <ConversationList :conversations="filteredConversations" :active-id="activeId" @select="selectConversation" />
-           <FriendsList :friends="friends" @start="startFriendConversation" />
+          <FriendsList :friends="friends" @start="startFriendConversation" />
           <div class="mt-auto border-t border-line px-5 py-4 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">
@@ -279,59 +300,77 @@ watch(activeId, () => {
                   <p class="font-mono text-[10px] text-mint">available</p>
                 </div>
               </div>
-              <button data-testid="button-settings" class="text-ink-faint transition hover:text-ink" title="Settings"><AppIcon name="settings" :size="17" /></button>
+              <button data-testid="button-settings" class="text-ink-faint transition hover:text-ink" title="Settings">
+                <AppIcon name="settings" :size="17" />
+              </button>
             </div>
           </div>
         </aside>
 
-        <section
-          class="relative flex min-w-0 flex-1 flex-col bg-surface-chat dark:bg-[#19191f]"
-          :class="showConversation ? 'flex' : 'hidden md:flex'"
-        >
+        <section class="relative flex min-w-0 flex-1 flex-col bg-surface-chat dark:bg-[#19191f]"
+          :class="showConversation ? 'flex' : 'hidden md:flex'">
           <template v-if="activeConversation">
-            <ChatHeader :conversation="activeConversation" :details-open="isDetailsOpen" @back="backToList" @toggle-details="isDetailsOpen = !isDetailsOpen" />
+            <ChatHeader :conversation="activeConversation" :details-open="isDetailsOpen" @back="backToList"
+              @toggle-details="isDetailsOpen = !isDetailsOpen" />
             <MessageThread :conversation="activeConversation" :people="people" :me="me" />
             <Composer @send="handleSend" />
-            <div v-if="isDetailsOpen" class="absolute right-4 top-[76px] z-10 w-[250px] rounded-2xl border border-line bg-surface-popover p-4 shadow-2xl shadow-black/10 dark:bg-[#24242b] dark:shadow-black/30">
+            <div v-if="isDetailsOpen"
+              class="absolute right-4 top-[76px] z-10 w-[250px] rounded-2xl border border-line bg-surface-popover p-4 shadow-2xl shadow-black/10 dark:bg-[#24242b] dark:shadow-black/30">
               <div class="mb-4 flex items-center justify-between">
                 <p class="text-[13px] font-semibold">Conversation info</p>
-                <button data-testid="button-close-details" class="text-ink-faint hover:text-ink" @click="isDetailsOpen = false"><AppIcon name="close" :size="16" /></button>
+                <button data-testid="button-close-details" class="text-ink-faint hover:text-ink"
+                  @click="isDetailsOpen = false">
+                  <AppIcon name="close" :size="16" />
+                </button>
               </div>
               <div class="mb-4 flex items-center gap-3">
-                <Avatar v-if="activeConversation.kind === 'direct'" :person="activeConversation.members[0]" :size="40" />
+                <Avatar v-if="activeConversation.kind === 'direct'" :person="activeConversation.members[0]"
+                  :size="40" />
                 <div v-else class="flex -space-x-2">
-                  <Avatar v-for="person in activeConversation.members.slice(0, 3)" :key="person.id" :person="person" :size="30" />
+                  <Avatar v-for="person in activeConversation.members.slice(0, 3)" :key="person.id" :person="person"
+                    :size="30" />
                 </div>
                 <div>
                   <p class="text-[13px] font-medium">{{ activeConversation.title }}</p>
-                  <p class="text-[11px] text-ink-faint">{{ activeConversation.kind === 'group' ? `${activeConversation.members.length + 1} members` : 'Direct conversation' }}</p>
+                  <p class="text-[11px] text-ink-faint">{{ activeConversation.kind === 'group' ?
+                    `${activeConversation.members.length + 1} members` : 'Direct conversation' }}</p>
                 </div>
               </div>
-              <button data-testid="button-mute-conversation" class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-ink-dim transition hover:bg-black/5 hover:text-ink dark:hover:bg-white/5"><AppIcon name="bell-off" :size="15" /> Mute notifications</button>
-              <button data-testid="button-search-chat" class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-ink-dim transition hover:bg-black/5 hover:text-ink dark:hover:bg-white/5"><AppIcon name="search" :size="15" /> Search in conversation</button>
+              <button data-testid="button-mute-conversation"
+                class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-ink-dim transition hover:bg-black/5 hover:text-ink dark:hover:bg-white/5">
+                <AppIcon name="bell-off" :size="15" /> Mute notifications
+              </button>
+              <button data-testid="button-search-chat"
+                class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-ink-dim transition hover:bg-black/5 hover:text-ink dark:hover:bg-white/5">
+                <AppIcon name="search" :size="15" /> Search in conversation
+              </button>
+
+              <!-- Section Divider -->
+              <div class="my-1 h-px bg-black/5 dark:bg-white/5"></div>
+
+              <button data-testid="button-logout"
+                class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-red-600/80 transition hover:bg-red-500/10 hover:text-red-600 dark:text-red-400/80 dark:hover:bg-red-500/20 dark:hover:text-red-400"
+                @click="handleLogout">
+                <AppIcon name="logout" :size="15" /> Logout
+              </button>
             </div>
           </template>
           <div v-else class="grid flex-1 place-items-center p-8 text-center">
             <div>
-              <div class="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-[22px] bg-plum/10 text-plum"><AppIcon name="message" :size="28" /></div>
+              <div class="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-[22px] bg-plum/10 text-plum">
+                <AppIcon name="message" :size="28" />
+              </div>
               <h2 class="text-lg font-semibold">Choose a conversation</h2>
-              <p class="mt-2 max-w-xs text-sm leading-6 text-ink-dim">Your messages, in one calm place. Select someone to start catching up.</p>
+              <p class="mt-2 max-w-xs text-sm leading-6 text-ink-dim">Your messages, in one calm place. Select someone
+                to start
+                catching up.</p>
             </div>
           </div>
         </section>
       </div>
-       <FriendPanel
-         v-if="showFriendPanel"
-         :people="friendSearchPeople"
-         :friends="friends"
-         :pending-requests="pendingRequests"
-         :sent-requests="sentRequests"
-         @close="showFriendPanel = false"
-         @add="addFriend"
-         @accept="acceptFriend"
-         @decline="declineFriend"
-         @cancel="cancelFriend"
-       />
+      <FriendPanel v-if="showFriendPanel" :people="friendSearchPeople" :friends="friends"
+        :pending-requests="pendingRequests" :sent-requests="sentRequests" @close="showFriendPanel = false"
+        @add="addFriend" @accept="acceptFriend" @decline="declineFriend" @cancel="cancelFriend" />
     </div>
   </main>
 </template>
