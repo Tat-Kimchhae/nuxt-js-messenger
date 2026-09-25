@@ -8,8 +8,11 @@ import MessageThread from '~/components/MessageThread.vue';
 import Composer from '~/components/Composer.vue';
 import FriendPanel from '~/components/FriendPanel.vue';
 import FriendsList from '~/components/FriendsList.vue';
+import { useApi } from '~~/app/composables/useApi';
 
-type Person = { id: string; name: string; initials: string; color: string; online?: boolean };
+// Types
+import type { Person } from "~~/types/person";
+
 type FriendProfile = Person & { username: string };
 type FriendRequest = { id: string; person: Person; username: string; time: string };
 type Message = { id: number; senderId: string; text: string; time: string; read?: boolean };
@@ -131,10 +134,26 @@ const friendSearchPeople: FriendProfile[] = [
   { ...people.sienna, username: '@siennacole' },
   { ...people.omar, username: '@omarh' },
 ];
+
+// Suggested friends
+const { call, isLoading } = useApi();
+const suggestedFriends = ref<Person[]>([]);
+
+watch(showFriendPanel, async (open) => {
+  if (!open) return;
+
+  const response = await call(() =>
+    $fetch<{ data: Person[]; status: boolean }>('/api/friends/suggestions')
+  );
+
+  suggestedFriends.value = response?.data ?? [];
+});
+
 const pendingRequests = ref<FriendRequest[]>([
   { id: 'pending-rhea', person: people.rhea, username: '@rheamorgan', time: '2h ago' },
   { id: 'pending-luca', person: people.luca, username: '@lucasilva', time: 'Yesterday' },
 ]);
+
 const sentRequests = ref<FriendRequest[]>([
   { id: 'sent-nora', person: people.nora, username: '@norapatel', time: '3d ago' },
 ]);
@@ -368,9 +387,10 @@ watch(activeId, () => {
           </div>
         </section>
       </div>
-      <FriendPanel v-if="showFriendPanel" :people="friendSearchPeople" :friends="friends"
-        :pending-requests="pendingRequests" :sent-requests="sentRequests" @close="showFriendPanel = false"
-        @add="addFriend" @accept="acceptFriend" @decline="declineFriend" @cancel="cancelFriend" />
+      <FriendPanel v-if="showFriendPanel" :people="friendSearchPeople" :suggestedFriends="suggestedFriends"
+        :pending-requests="pendingRequests" :sent-requests="sentRequests" :isLoading="isLoading"
+        @close="showFriendPanel = false" @add="addFriend" @accept="acceptFriend" @decline="declineFriend"
+        @cancel="cancelFriend" />
     </div>
   </main>
 </template>

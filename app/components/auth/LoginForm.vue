@@ -28,17 +28,21 @@ import { reactive } from "vue";
 import { loginSchema } from "~/validation/auth.ts";
 import AuthInput from "~/components/auth/AuthInput.vue";
 
-const formData = reactive({ email: "user1@gmail.com", password: "123456" });
+const formData = reactive({ email: "tatkimchhae@gmail.com", password: "123456" });
 const { errors, validate } = useFormValidation();
 const { call, isLoading } = useApi();
 
 const handleSubmit = async () => {
   if (!validate(loginSchema, formData)) return
+  const { fetch } = useUserSession()
   await call(
     () => $fetch("/api/auth/login", { method: "POST", body: formData }),
     { successMessage: (response) => response.message }
-  ).then(response => {
-    if (response) navigateTo("/");
+  ).then(async response => {
+    if (response) {
+      await fetch()
+      await navigateTo("/")
+    }
   });
 }
 </script>

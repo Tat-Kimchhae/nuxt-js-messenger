@@ -1,8 +1,9 @@
 import prisma from "~~/server/utils/prisma.ts";
-import {registerSchema} from "~/validation/auth";
+import { registerSchema } from "~/validation/auth";
+import { generateUsername } from "~~/server/utils/auth";
 
 export default defineEventHandler(async (event) => {
-  const {firstName, lastName, email, password} = await readValidatedBody(
+  const { firstName, lastName, email, password } = await readValidatedBody(
     event,
     (body) => registerSchema.parse(body),
   ).catch((err) => {
@@ -22,6 +23,7 @@ export default defineEventHandler(async (event) => {
         hashedPassword,
         firstName,
         lastName,
+        username: await generateUsername(firstName),
       },
     });
 
@@ -42,7 +44,7 @@ export default defineEventHandler(async (event) => {
       console.log(err.meta?.target);
       throw createError({
         statusCode: 409,
-        statusMessage: "User already exists"
+        statusMessage: "User already exists",
       });
     }
 

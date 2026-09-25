@@ -1,4 +1,3 @@
-<!-- components/auth/RegisterForm.vue -->
 <template>
   <form @submit.prevent="handleSubmit" novalidate class="space-y-4">
     <h2 class="text-xl font-bold text-gray-900 dark:text-white mb-1">
@@ -45,12 +44,15 @@ const { call, isLoading } = useApi();
 
 const handleSubmit = async () => {
   if (!validate(registerSchema, formData)) return;
-
+  const { fetch } = useUserSession()
   await call(
     () => $fetch("/api/auth/register", { method: "POST", body: formData }),
     { successMessage: (res) => res.message }
-  ).then(response => {
-    if (response) navigateTo("/");
+  ).then(async response => {
+    if (response) {
+      await fetch()
+      await navigateTo("/")
+    }
   });
 };
 </script>
