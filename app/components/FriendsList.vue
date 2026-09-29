@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import Avatar from './Avatar.vue';
 import AppIcon from './AppIcon.vue';
-
-type Person = { id: string; name: string; initials: string; color: string; online?: boolean };
+import type { Person } from '~~/types/person.ts';
 
 defineProps<{ friends: Person[] }>();
 const emit = defineEmits<{ start: [person: Person] }>();

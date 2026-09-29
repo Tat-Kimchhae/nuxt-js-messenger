@@ -3,9 +3,9 @@ import { ref } from 'vue';
 import Avatar from './Avatar.vue';
 import AppIcon from './AppIcon.vue';
 import type { Person } from '~~/types/person.ts';
+import type { FriendRequest } from '~~/types/friendRequest.ts';
 
 type FriendProfile = Person & { username: string };
-type FriendRequest = { id: string; person: Person; username: string; time: string };
 
 const props = defineProps<{
   people: FriendProfile[];
@@ -132,7 +132,7 @@ function hasSentRequest(personId: string) {
                 <Avatar :person="request.person" :size="38" :show-presence="true" />
                 <div class="min-w-0 flex-1">
                   <p class="truncate text-[13px] font-medium">{{ request.person.name }}</p>
-                  <p class="mt-0.5 truncate font-mono text-[10px] text-ink-faint">{{ request.username }} · {{
+                  <p class="mt-0.5 truncate font-mono text-[10px] text-ink-faint">{{ request.person.username }} · {{
                     request.time }}</p>
                 </div>
               </div>
@@ -163,7 +163,7 @@ function hasSentRequest(personId: string) {
               <div class="min-w-0 flex-1">
                 <p class="truncate text-[12px] font-medium">{{ request.person.name }}</p>
                 <p class="mt-0.5 truncate font-mono text-[10px] text-ink-faint">{{ request.username }} · {{ request.time
-                  }}</p>
+                }}</p>
               </div>
               <button :data-testid="`button-cancel-request-${request.id}`"
                 class="rounded-lg px-2 py-1.5 text-[11px] text-ink-faint transition hover:bg-black/5 hover:text-ink dark:hover:bg-white/5"

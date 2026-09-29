@@ -12,6 +12,7 @@ import { useApi } from '~~/app/composables/useApi';
 
 // Types
 import type { Person } from "~~/types/person";
+import { toast } from 'vue-sonner';
 
 type FriendProfile = Person & { username: string };
 type FriendRequest = { id: string; person: Person; username: string; time: string };
@@ -126,7 +127,8 @@ const showConversation = ref(false);
 const isDetailsOpen = ref(false);
 const showFriendPanel = ref(false);
 const colorMode = useColorMode();
-const friends = ref<Person[]>([people.maya, people.theo, people.june, people.sam]);
+const friends = ref<Person[]>([]);
+
 const friendSearchPeople: FriendProfile[] = [
   { ...people.rhea, username: '@rheamorgan' },
   { ...people.luca, username: '@lucasilva' },
@@ -138,21 +140,29 @@ const friendSearchPeople: FriendProfile[] = [
 // Suggested friends
 const { call, isLoading } = useApi();
 const suggestedFriends = ref<Person[]>([]);
+const pendingRequests = ref<FriendRequest[]>([]);
 
 watch(showFriendPanel, async (open) => {
   if (!open) return;
 
-  const response = await call(() =>
-    $fetch<{ data: Person[]; status: boolean }>('/api/friends/suggestions')
+  const res = await call(() =>
+    Promise.all([
+      $fetch<{ data: Person[]; status: boolean }>('/api/friends/suggestions'),
+      $fetch<{ data: FriendRequest[]; status: boolean }>('/api/friends/requests', { query: { type: 'received' } }),
+      $fetch<{ data: FriendRequest[]; status: boolean }>('/api/friends/requests', { query: { type: 'sent' } }),
+    ])
   );
 
-  suggestedFriends.value = response?.data ?? [];
+  const [suggestions, received, sent] = res ?? [];
+  suggestedFriends.value = suggestions?.data ?? [];
+  pendingRequests.value = received?.data ?? [];
+  sentRequests.value = sent?.data ?? [];
 });
 
-const pendingRequests = ref<FriendRequest[]>([
-  { id: 'pending-rhea', person: people.rhea, username: '@rheamorgan', time: '2h ago' },
-  { id: 'pending-luca', person: people.luca, username: '@lucasilva', time: 'Yesterday' },
-]);
+// const pendingRequests = ref<FriendRequest[]>([
+//   { id: 'pending-rhea', person: people.rhea, username: '@rheamorgan', time: '2h ago' },
+//   { id: 'pending-luca', person: people.luca, username: '@lucasilva', time: 'Yesterday' },
+// ]);
 
 const sentRequests = ref<FriendRequest[]>([
   { id: 'sent-nora', person: people.nora, username: '@norapatel', time: '3d ago' },
@@ -162,22 +172,59 @@ function toggleColorMode() {
   colorMode.preference.value = colorMode.value.value === 'dark' ? 'light' : 'dark';
 }
 
-function addFriend(person: FriendProfile) {
-  if (sentRequests.value.some((request) => request.person.id === person.id)) return;
-  sentRequests.value.push({ id: `sent-${person.id}`, person, username: person.username, time: 'Just now' });
+async function addFriend(person: Person) {
+  try {
+    const res = await $fetch<{ status: boolean; data: { id: string } }>('/api/friends/requests', {
+      method: 'POST',
+      body: { receiverId: person.id },
+    });
+    sentRequests.value.unshift({ id: res.data.id, person, time: 'Just now' });
+    suggestedFriends.value = suggestedFriends.value.filter((p) => p.id !== person.id);
+  } catch (err) {
+    console.error('Add friend failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not send request');
+  }
 }
 
-function acceptFriend(request: FriendRequest) {
-  pendingRequests.value = pendingRequests.value.filter((item) => item.id !== request.id);
-  if (!friends.value.some((friend) => friend.id === request.person.id)) friends.value.push(request.person);
+async function acceptFriend(request: FriendRequest) {
+  try {
+    await $fetch('/api/friends/requests/accept', { method: 'POST', body: { requestId: request.id } });
+    pendingRequests.value = pendingRequests.value.filter((r) => r.id !== request.id);
+    if (!friends.value.some((f) => f.id === request.person.id)) friends.value.push(request.person);
+  } catch (err) {
+    console.error('Accept friend failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not accept request');
+  }
 }
 
-function declineFriend(request: FriendRequest) {
-  pendingRequests.value = pendingRequests.value.filter((item) => item.id !== request.id);
+async function declineFriend(request: FriendRequest) {
+  try {
+    await $fetch('/api/friends/requests/decline', { method: 'POST', body: { requestId: request.id } });
+    pendingRequests.value = pendingRequests.value.filter((r) => r.id !== request.id);
+  } catch (err) {
+    console.error('Decline friend failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not deline request');
+  }
 }
 
-function cancelFriend(request: FriendRequest) {
-  sentRequests.value = sentRequests.value.filter((item) => item.id !== request.id);
+async function cancelFriend(request: FriendRequest) {
+  try {
+    await $fetch(`/api/friends/requests/${request.id}`, { method: 'DELETE' });
+    sentRequests.value = sentRequests.value.filter((r) => r.id !== request.id);
+  } catch (err) {
+    console.error('Cancel friend failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not cancel request');
+  }
+}
+
+async function loadFriends() {
+  try {
+    const response = await $fetch<{ status: boolean; data: Person[] }>('/api/friends');
+    friends.value = response.data ?? [];
+  } catch (err) {
+    console.error('Load friends failed:', err);
+    toast.error('Could not load friends');
+  }
 }
 
 const activeConversation = computed(() => conversations.value.find((conversation) => conversation.id === activeId.value) ?? null);
@@ -252,6 +299,8 @@ async function handleLogout() {
 watch(activeId, () => {
   nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 }));
 });
+
+onMounted(loadFriends);
 </script>
 
 <template>
