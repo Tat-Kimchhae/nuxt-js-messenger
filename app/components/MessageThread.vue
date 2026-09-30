@@ -7,6 +7,11 @@ type Message = { id: number; senderId: string; text: string; time: string; read?
 type Conversation = { id: string; title: string; kind: 'direct' | 'group'; members: Person[]; messages: Message[] };
 const props = defineProps<{ conversation: Conversation; people: Record<string, Person>; me: Person }>();
 
+const emit = defineEmits<{ 'load-older': [] }>();
+function onScroll(e: Event) {
+  if ((e.target as HTMLElement).scrollTop < 80) emit('load-older');
+}
+
 const messagesWithMeta = computed(() => props.conversation.messages.map((message, index, all) => {
   const previous = all[index - 1];
   const isMine = message.senderId === props.me.id;
@@ -21,7 +26,7 @@ const messagesWithMeta = computed(() => props.conversation.messages.map((message
 </script>
 
 <template>
-   <div data-message-scroll class="scrollbar-thin flex-1 overflow-y-auto bg-surface-chat px-4 py-6 sm:px-8 lg:px-12 dark:bg-[#19191f]">
+   <div data-message-scroll @scroll.passive="onScroll" class="scrollbar-thin min-h-0 flex-1 overflow-y-auto bg-surface-chat px-4 py-6 sm:px-8 lg:px-12 dark:bg-[#19191f]">
     <div class="mx-auto flex min-h-full max-w-3xl flex-col justify-end">
       <div class="mb-8 text-center">
         <div class="mx-auto mb-3 flex justify-center">
@@ -43,7 +48,8 @@ const messagesWithMeta = computed(() => props.conversation.messages.map((message
           <div class="max-w-[82%] sm:max-w-[68%]" :class="message.isMine ? 'items-end' : 'items-start'">
             <p v-if="message.showSender" class="mb-1 ml-1 font-mono text-[10px] text-ink-faint">{{ people[message.senderId]?.name }}</p>
              <div class="rounded-[18px] px-4 py-2.5 text-[13px] leading-[1.45]" :class="message.isMine ? 'rounded-br-[5px] bg-plum text-void dark:bg-[#b49bff] dark:text-[#101014]' : 'rounded-bl-[5px] bg-panel-raised text-ink/90 dark:bg-[#202027] dark:text-[#f6f5f2]/90'">
-              {{ message.text }}
+              <img v-if="message.image" :src="message.image" class="mb-1 max-h-64 rounded-xl" alt="" />
+              <span v-if="message.text">{{ message.text }}</span>
             </div>
             <div v-if="message.isLastInGroup" class="mt-1 flex items-center gap-1.5 px-1 font-mono text-[9px] text-ink-faint" :class="message.isMine ? 'justify-end' : 'justify-start'">
               <span>{{ message.time }}</span>

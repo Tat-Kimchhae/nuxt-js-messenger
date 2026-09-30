@@ -1,28 +1,29 @@
 // https://nuxt.com/docs/api/configuration/nuxt-config
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
-  compatibilityDate: '2025-07-15',
+  compatibilityDate: "2025-07-15",
   devtools: {
-    enabled: true
+    enabled: true,
   },
-  modules: ['@nuxtjs/color-mode', 'nuxt-auth-utils', '@vee-validate/nuxt'],
+  modules: ["@nuxtjs/color-mode", "nuxt-auth-utils", "@vee-validate/nuxt"],
   colorMode: {
-    preference: 'light',
-    fallback: 'dark',
-    storage: 'cookie',
-    storageKey: 'color-mode',
+    preference: "light",
+    fallback: "dark",
+    storage: "cookie",
+    storageKey: "color-mode",
   },
   imports: {
-    dirs: ['validation']
+    dirs: ["validation"],
   },
-  components: [
-    {path: '~/components/auth', pathPrefix: false}
-  ],
-  css: ['~/assets/css/main.css'],
+  components: [{ path: "~/components/auth", pathPrefix: false }],
+  css: ["~/assets/css/main.css"],
   vite: {
-    plugins: [
-      tailwindcss(),
-    ]
+    plugins: [tailwindcss()],
+  },
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag) => tag === "emoji-picker",
+    },
   }
-})
+});

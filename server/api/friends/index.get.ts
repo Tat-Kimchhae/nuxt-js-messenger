@@ -2,8 +2,10 @@ export default defineEventHandler(async (event) => {
   const session = await requireUserSession(event);
   const currentUserId = session.user.id;
 
-  const { q: searchQuery } = getQuery(event);
+  const { q: searchQuery, cursor, limit } = getQuery(event);
   const searchText = typeof searchQuery === "string" ? searchQuery.trim() : "";
+  const cursorId = typeof cursor === "string" && cursor ? cursor : undefined;
+  const take = Math.min(Math.max(Number(limit) || 20, 1), 100);
 
   const buildSearchFilter = (relation: "sender" | "receiver") => ({
     [relation]: {
@@ -15,7 +17,15 @@ export default defineEventHandler(async (event) => {
     },
   });
 
-  const acceptedFriendRequests = await prisma.friendRequest.findMany({
+  const userSelect = {
+    id: true,
+    firstName: true,
+    lastName: true,
+    username: true,
+    avatarUrl: true,
+  };
+
+  const rows = await prisma.friendRequest.findMany({
     where: {
       status: "ACCEPTED",
       OR: [
@@ -30,31 +40,21 @@ export default defineEventHandler(async (event) => {
       ],
     },
     include: {
-      sender: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          avatarUrl: true,
-        },
-      },
-      receiver: {
-        select: {
-          id: true,
-          firstName: true,
-          lastName: true,
-          username: true,
-          avatarUrl: true,
-        },
-      },
+      sender: { select: userSelect },
+      receiver: { select: userSelect },
     },
-    orderBy: { updatedAt: "desc" },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+    take: take + 1, // fetch one extra to detect next page
+    ...(cursorId && { cursor: { id: cursorId }, skip: 1 }),
   });
+
+  const hasMore = rows.length > take;
+  const page = hasMore ? rows.slice(0, take) : rows;
+  const nextCursor = hasMore ? page[page.length - 1].id : null;
 
   return {
     status: true,
-    data: acceptedFriendRequests.map((friendRequest) => {
+    data: page.map((friendRequest) => {
       const friendUser =
         friendRequest.senderId === currentUserId
           ? friendRequest.receiver
@@ -70,5 +70,10 @@ export default defineEventHandler(async (event) => {
         color: stringToColor(friendUser.id),
       };
     }),
+    pagination: {
+      nextCursor,
+      hasMore,
+      limit: take,
+    },
   };
 });

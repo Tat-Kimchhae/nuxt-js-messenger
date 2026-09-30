@@ -44,90 +44,15 @@ const people: Record<string, Person> = {
   omar: { id: 'omar', name: 'Omar Haddad', initials: 'OH', color: '#9bd6ad', online: true },
 };
 
-const conversations = ref<Conversation[]>([
-  {
-    id: 'maya',
-    title: 'Maya Chen',
-    kind: 'direct',
-    members: [people.maya],
-    preview: 'The light is perfect around 7.',
-    time: '9:42 AM',
-    unread: 2,
-    accent: '#ff8975',
-    messages: [
-      { id: 1, senderId: 'maya', text: 'Hey! Did you see the new layout for the gallery?', time: '9:31 AM' },
-      { id: 2, senderId: 'me', text: 'Just opened it. The type feels so much better now.', time: '9:33 AM', read: true },
-      { id: 3, senderId: 'maya', text: 'Right? I spent way too long nudging those captions.', time: '9:34 AM' },
-      { id: 4, senderId: 'maya', text: 'Want to take a walk and talk through the last few pieces?', time: '9:42 AM' },
-    ],
-  },
-  {
-    id: 'studio',
-    title: 'Studio / Spring Launch',
-    kind: 'group',
-    members: [people.june, people.sam, people.nico],
-    preview: 'June: I dropped the final selects.',
-    time: 'Yesterday',
-    unread: 0,
-    accent: '#ffc76c',
-    messages: [
-      { id: 11, senderId: 'sam', text: 'The landing page is ready for a last pass.', time: 'Yesterday, 4:12 PM' },
-      { id: 12, senderId: 'june', text: 'I dropped the final selects. The warm set feels right for the opening.', time: 'Yesterday, 4:19 PM' },
-      { id: 13, senderId: 'me', text: 'Agreed. Let’s use the close crop for the first frame.', time: 'Yesterday, 4:24 PM', read: true },
-      { id: 14, senderId: 'nico', text: 'Perfect. I’ll update the deck before tomorrow morning.', time: 'Yesterday, 4:31 PM' },
-    ],
-  },
-  {
-    id: 'theo',
-    title: 'Theo Martin',
-    kind: 'direct',
-    members: [people.theo],
-    preview: 'That sounds like a plan.',
-    time: 'Tue',
-    unread: 0,
-    accent: '#87e6ce',
-    messages: [
-      { id: 21, senderId: 'me', text: 'Coffee after the talk?', time: 'Tue, 2:08 PM', read: true },
-      { id: 22, senderId: 'theo', text: 'That sounds like a plan.', time: 'Tue, 2:11 PM' },
-    ],
-  },
-  {
-    id: 'weekend',
-    title: 'Weekend plans',
-    kind: 'group',
-    members: [people.ian, people.maya, people.theo],
-    preview: 'Ian: I can bring the speaker.',
-    time: 'Mon',
-    unread: 0,
-    accent: '#71caef',
-    messages: [
-      { id: 31, senderId: 'maya', text: 'Are we still doing the coast on Saturday?', time: 'Mon, 8:14 PM' },
-      { id: 32, senderId: 'ian', text: 'I can bring the speaker.', time: 'Mon, 8:27 PM' },
-      { id: 33, senderId: 'me', text: 'Absolutely. I’ll pack the picnic stuff.', time: 'Mon, 8:39 PM', read: true },
-    ],
-  },
-  {
-    id: 'june',
-    title: 'June Okafor',
-    kind: 'direct',
-    members: [people.june],
-    preview: 'Can you send me that reference?',
-    time: 'Sun',
-    unread: 0,
-    accent: '#ffc76c',
-    messages: [
-      { id: 41, senderId: 'june', text: 'Can you send me that reference?', time: 'Sun, 11:08 AM' },
-    ],
-  },
-]);
-
-const activeId = ref('maya');
+const conversations = ref<Conversation[]>([]);
+const activeId = ref('');
 const search = ref('');
 const showConversation = ref(false);
 const isDetailsOpen = ref(false);
 const showFriendPanel = ref(false);
 const colorMode = useColorMode();
 const friends = ref<Person[]>([]);
+const messagesByConversation = ref<Record<string, Message[]>>({});
 
 const friendSearchPeople: FriendProfile[] = [
   { ...people.rhea, username: '@rheamorgan' },
@@ -227,13 +152,77 @@ async function loadFriends() {
   }
 }
 
-const activeConversation = computed(() => conversations.value.find((conversation) => conversation.id === activeId.value) ?? null);
-const filteredConversations = computed(() => {
-  const query = search.value.trim().toLowerCase();
-  if (!query) return conversations.value;
-  return conversations.value.filter((conversation) =>
-    `${conversation.title} ${conversation.preview}`.toLowerCase().includes(query),
-  );
+async function loadConversations(query = '') {
+  try {
+    const response = await $fetch<Omit<Conversation, 'messages'>[]>('/api/conversations', {
+      query: { q: query || undefined },
+    });
+    conversations.value = response.map((conversation) => ({ ...conversation, messages: [] }));
+  } catch (err) {
+    console.error('Load conversations failed:', err);
+    toast.error('Could not load conversations');
+  }
+}
+
+const cursorByConversation = ref<Record<string, string | null>>({});
+const loadingOlder = ref(false);
+
+async function loadMessages(id: string) {
+  try {
+    const res = await $fetch<{ messages: any[]; nextCursor: string | null }>(
+      `/api/conversations/${id}/messages`,
+    );
+    messagesByConversation.value[id] = res.messages.map((m) => ({ ...m, time: formatTime(m.createdAt) }));
+    cursorByConversation.value[id] = res.nextCursor;
+    await nextTick();
+    document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 });
+  } catch (err) {
+    console.error('Load messages failed:', err);
+    toast.error('Could not load messages');
+  }
+}
+
+async function loadOlder() {
+  const id = activeId.value;
+  const cursor = cursorByConversation.value[id];
+  if (!id || !cursor || loadingOlder.value) return;
+
+  const el = document.querySelector('[data-message-scroll]') as HTMLElement | null;
+  const prevHeight = el?.scrollHeight ?? 0;
+
+  loadingOlder.value = true;
+  try {
+    const res = await $fetch<{ messages: any[]; nextCursor: string | null }>(
+      `/api/conversations/${id}/messages`,
+      { query: { before: cursor } },
+    );
+    const older = res.messages.map((m) => ({ ...m, time: formatTime(m.createdAt) }));
+    messagesByConversation.value[id] = [...older, ...(messagesByConversation.value[id] ?? [])];
+    cursorByConversation.value[id] = res.nextCursor;
+
+    // keep the viewport anchored after prepending
+    await nextTick();
+    if (el) el.scrollTop = el.scrollHeight - prevHeight;
+  } catch (err) {
+    console.error('Load older failed:', err);
+    toast.error('Could not load older messages');
+  } finally {
+    loadingOlder.value = false;
+  }
+}
+
+async function markRead(id: string) {
+  try {
+    await $fetch(`/api/conversations/${id}/read`, { method: 'POST' });
+  } catch (err) {
+    console.error('Mark read failed:', err);
+  }
+}
+
+const activeConversation = computed(() => {
+  const conversation = conversations.value.find((c) => c.id === activeId.value);
+  if (!conversation) return null;
+  return { ...conversation, messages: messagesByConversation.value[conversation.id] ?? [] };
 });
 
 function selectConversation(id: string) {
@@ -241,6 +230,7 @@ function selectConversation(id: string) {
   showConversation.value = true;
   const conversation = conversations.value.find((item) => item.id === id);
   if (conversation) conversation.unread = 0;
+  if (!id.startsWith('direct-')) loadMessages(id).then(() => markRead(id));
 }
 
 function startFriendConversation(person: Person) {
@@ -267,22 +257,39 @@ function startFriendConversation(person: Person) {
   selectConversation(newConversation.id);
 }
 
-function handleSend(text: string) {
-  if (!activeConversation.value || !text.trim()) return;
-  const now = new Date();
-  const time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-  activeConversation.value.messages.push({
-    id: Date.now(),
-    senderId: me.id,
-    text: text.trim(),
-    time,
-    read: true,
-  });
-  activeConversation.value.preview = text.trim();
-  activeConversation.value.time = 'Now';
-  nextTick(() => {
-    document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999, behavior: 'smooth' });
-  });
+const formatTime = (date: string | Date) => new Date(date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+async function handleSend(text: string, file?: File) {
+  const conversation = activeConversation.value;
+  if (!conversation || (!text.trim() && !file)) return;
+
+  let body: FormData | { text: string };
+  if (file) {
+    body = new FormData();
+    body.append('text', text.trim());
+    body.append('image', file);
+  } else {
+    body = { text: text.trim() };
+  }
+
+  try {
+    const message = await $fetch<any>(`/api/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      body,
+    });
+
+    const list = messagesByConversation.value[conversation.id] ?? [];
+    messagesByConversation.value[conversation.id] = [
+      ...list,
+      { ...message, time: formatTime(message.createdAt) },
+    ];
+    const target = conversations.value.find((c) => c.id === conversation.id);
+    if (target) { target.preview = message.text || 'Sent a photo'; target.time = 'Now'; }
+    nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999, behavior: 'smooth' }));
+  } catch (err: any) {
+    console.error('Send failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not send message');
+  }
 }
 
 function backToList() {
@@ -300,16 +307,26 @@ watch(activeId, () => {
   nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 }));
 });
 
-onMounted(loadFriends);
+let searchTimer: ReturnType<typeof setTimeout>;
+watch(search, (query) => {
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => loadConversations(query.trim()), 300);
+});
+
+onMounted(() => {
+  loadFriends();
+  loadConversations();
+});
+
 </script>
 
 <template>
-  <main class="noise min-h-[100dvh] overflow-hidden bg-void text-ink">
-    <div class="mx-auto flex min-h-[100dvh] max-w-[1560px] flex-col p-0 sm:p-3 lg:p-5">
+  <main class="noise h-[100dvh] overflow-hidden bg-void text-ink">
+    <div class="mx-auto flex h-[100dvh] max-w-[1560px] flex-col p-0 sm:p-3 lg:p-5">
       <div
-        class="flex min-h-[100dvh] flex-1 overflow-hidden border-line bg-panel sm:min-h-0 sm:rounded-[26px] sm:border sm:shadow-2xl sm:shadow-black/20">
+        class="flex min-h-0 flex-1 overflow-hidden border-line bg-panel sm:rounded-[26px] sm:border sm:shadow-2xl sm:shadow-black/20">
         <aside
-          class="flex w-full shrink-0 flex-col border-r border-line bg-surface-sidebar dark:bg-[#141419] md:w-[320px] lg:w-[364px]"
+          class="flex min-h-0 w-full shrink-0 flex-col border-r border-line bg-surface-sidebar dark:bg-[#141419] md:w-[320px] lg:w-[364px]"
           :class="showConversation ? 'hidden md:flex' : 'flex'">
           <div class="border-b border-line px-5 pb-4 pt-5 sm:px-6 sm:pt-6">
             <div class="mb-7 flex items-center justify-between">
@@ -346,7 +363,7 @@ onMounted(loadFriends);
               <input v-model="search" data-testid="input-search-conversations"
                 class="w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-ink-faint"
                 placeholder="Search conversations" type="search" />
-              <span v-if="search" class="font-mono text-[10px] text-ink-faint">{{ filteredConversations.length }}</span>
+              <span v-if="search" class="font-mono text-[10px] text-ink-faint">{{ conversations.length }}</span>
             </label>
           </div>
 
@@ -357,7 +374,7 @@ onMounted(loadFriends);
               <AppIcon name="sliders" :size="14" />
             </button>
           </div>
-          <ConversationList :conversations="filteredConversations" :active-id="activeId" @select="selectConversation" />
+          <ConversationList :conversations="conversations" :active-id="activeId" @select="selectConversation" />
           <FriendsList :friends="friends" @start="startFriendConversation" />
           <div class="mt-auto border-t border-line px-5 py-4 sm:px-6">
             <div class="flex items-center justify-between">
@@ -375,12 +392,12 @@ onMounted(loadFriends);
           </div>
         </aside>
 
-        <section class="relative flex min-w-0 flex-1 flex-col bg-surface-chat dark:bg-[#19191f]"
+        <section class="relative flex min-w-0 min-h-0 flex-1 flex-col bg-surface-chat dark:bg-[#19191f]"
           :class="showConversation ? 'flex' : 'hidden md:flex'">
           <template v-if="activeConversation">
             <ChatHeader :conversation="activeConversation" :details-open="isDetailsOpen" @back="backToList"
               @toggle-details="isDetailsOpen = !isDetailsOpen" />
-            <MessageThread :conversation="activeConversation" :people="people" :me="me" />
+            <MessageThread @load-older="loadOlder" :conversation="activeConversation" :people="people" :me="me" />
             <Composer @send="handleSend" />
             <div v-if="isDetailsOpen"
               class="absolute right-4 top-[76px] z-10 w-[250px] rounded-2xl border border-line bg-surface-popover p-4 shadow-2xl shadow-black/10 dark:bg-[#24242b] dark:shadow-black/30">

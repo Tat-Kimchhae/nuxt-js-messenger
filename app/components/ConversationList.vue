@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import Avatar from './Avatar.vue';
 import AppIcon from './AppIcon.vue';
+import type { Person } from "~~/types/person";
+import type { Conversation } from "~~/types/conversation";
 
-type Person = { id: string; name: string; initials: string; color: string; online?: boolean };
-type Conversation = { id: string; title: string; kind: 'direct' | 'group'; members: Person[]; preview: string; time: string; unread: number; accent: string };
 defineProps<{ conversations: Conversation[]; activeId: string }>();
 const emit = defineEmits<{ select: [id: string] }>();
 </script>
 
 <template>
-  <div v-if="conversations.length" class="scrollbar-thin flex-1 overflow-y-auto px-3 pb-4">
+  <div v-if="conversations.length" class="scrollbar-thin min-h-0 flex-1 overflow-y-auto px-3 pb-4">
     <button
       v-for="conversation in conversations"
       :key="conversation.id"

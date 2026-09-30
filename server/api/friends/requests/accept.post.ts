@@ -10,19 +10,36 @@ export default defineEventHandler(async (event) => {
       });
     }
 
-    // only the receiver can accept, and only while PENDING
-    const { count } = await prisma.friendRequest.updateMany({
-      where: { id: requestId, receiverId: user.id, status: "PENDING" },
-      data: { status: "ACCEPTED" },
-    });
-    if (!count) {
-      throw createError({
-        statusCode: 404,
-        statusMessage: "Request not found",
+    const conversationId = await prisma.$transaction(async (transaction) => {
+      // only the receiver can accept, and only while PENDING
+      const { count } = await transaction.friendRequest.updateMany({
+        where: { id: requestId, receiverId: user.id, status: "PENDING" },
+        data: { status: "ACCEPTED" },
       });
-    }
+      if (!count) {
+        throw createError({
+          statusCode: 404,
+          statusMessage: "Request not found",
+        });
+      }
 
-    return { status: true };
+      const { senderId } = await transaction.friendRequest.findUniqueOrThrow({
+        where: { id: requestId },
+        select: { senderId: true },
+      });
+
+      const conversation = await transaction.conversation.create({
+        data: {
+          isGroup: false,
+          users: { connect: [{ id: senderId }, { id: user.id }] },
+        },
+        select: { id: true },
+      });
+
+      return conversation.id;
+    });
+
+    return { status: true, conversationId };
   } catch (err: any) {
     if (err.statusCode) throw err;
     console.error("Accept friend request failed:", err);
