@@ -288,14 +288,9 @@ async function handleSend(text: string, file?: File) {
       body,
     });
 
-    const list = messagesByConversation.value[conversation.id] ?? [];
-    messagesByConversation.value[conversation.id] = [
-      ...list,
-      { ...message, time: formatTime(message.createdAt) },
-    ];
+    addMessageIfMissing(conversation.id, message);
     const target = conversations.value.find((c) => c.id === conversation.id);
     if (target) { target.preview = message.text || 'Sent a photo'; target.time = 'Now'; }
-    nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999, behavior: 'smooth' }));
   } catch (err: any) {
     console.error('Send failed:', err);
     toast.error(err?.data?.statusMessage ?? 'Could not send message');
@@ -311,7 +306,7 @@ async function handleLogout() {
   await navigateTo('/login')
 }
 
-function appendRealtimeMessage(conversationId: string, incoming: any) {
+function addMessageIfMissing(conversationId: string, incoming: any) {
   const list = messagesByConversation.value[conversationId] ?? [];
   if (list.some((message) => message.id === incoming.id)) return;
   const senderId = incoming.senderId === user.value?.id ? 'me' : incoming.senderId;
@@ -350,7 +345,7 @@ watch(activeId, (id) => {
   unsubscribeConversationChannel = undefined;
   if (!id || id.startsWith('direct-')) return;
   unsubscribeConversationChannel = subscribeToConversation(id, {
-    'message:new': (incoming) => appendRealtimeMessage(id, incoming),
+    'message:new': (incoming) => addMessageIfMissing(id, incoming),
     'messages:read': (payload) => applyMessagesRead(id, payload as { readerId: string; readAt: string | Date }),
   });
 });
