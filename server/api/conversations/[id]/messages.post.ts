@@ -1,3 +1,6 @@
+import pusher from "~~/server/utils/pusher"
+import { serializeMessage } from "~~/server/utils/serializeMessage"
+
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event)
   const id = getRouterParam(event, 'id')!
@@ -27,7 +30,7 @@ export default defineEventHandler(async (event) => {
 
   const conversation = await prisma.conversation.findFirst({
     where: { id, users: { some: { id: user.id } } },
-    select: { id: true },
+    select: { id: true, users: { select: { id: true } } },
   })
   if (!conversation) throw createError({ statusCode: 404, statusMessage: 'Conversation not found' })
 
@@ -50,6 +53,34 @@ export default defineEventHandler(async (event) => {
       data: { lastMessageAt: new Date() },
     }),
   ])
+
+  try {
+    const otherUserIds = conversation.users
+      .map((member) => member.id)
+      .filter((memberId) => memberId !== user.id)
+    const serializedMessage = serializeMessage(message, user.id)
+    await pusher.trigger(`private-conversation-${id}`, 'message:new', serializedMessage)
+
+    const preview = message.body ?? (message.image ? 'Sent a photo' : '')
+    const time = timeAgo(message.createdAt)
+    for (const otherUserId of otherUserIds) {
+      const unread = await prisma.message.count({
+        where: {
+          conversationId: id,
+          senderId: { not: otherUserId },
+          readAt: null,
+        },
+      })
+      await pusher.trigger(`private-user-${otherUserId}`, 'conversation:updated', {
+        id,
+        preview,
+        time,
+        unread,
+      })
+    }
+  } catch (err) {
+    console.error('Pusher trigger failed:', err)
+  }
 
   return {
     id: message.id,

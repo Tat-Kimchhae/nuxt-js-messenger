@@ -25,5 +25,13 @@ export default defineNuxtConfig({
     compilerOptions: {
       isCustomElement: (tag) => tag === "emoji-picker",
     },
-  }
+  },
+  runtimeConfig: {
+    pusherAppId: process.env.PUSHER_APP_ID,
+    pusherSecret: process.env.PUSHER_SECRET,
+    public: {
+      pusherKey: process.env.PUSHER_KEY,
+      pusherCluster: process.env.PUSHER_CLUSTER,
+    },
+  },
 });

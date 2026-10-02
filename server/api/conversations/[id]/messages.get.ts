@@ -1,3 +1,5 @@
+import { serializeMessage } from "~~/server/utils/serializeMessage";
+
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event);
   const id = getRouterParam(event, "id")!;
@@ -35,17 +37,7 @@ export default defineEventHandler(async (event) => {
   const page = hasMore ? rows.slice(0, limit) : rows;
 
   return {
-    messages: page.reverse().map((message) => {
-      const mine = message.senderId === user.id;
-      return {
-        id: message.id,
-        senderId: mine ? "me" : message.senderId,
-        text: message.body ?? "",
-        image: message.image,
-        createdAt: message.createdAt,
-        read: mine ? message.readAt !== null : undefined,
-      };
-    }),
+    messages: page.reverse().map((message) => serializeMessage(message, user.id)),
     nextCursor: hasMore ? page[0].id : null, // oldest id in this page
   };
 });

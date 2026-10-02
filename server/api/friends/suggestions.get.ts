@@ -4,6 +4,10 @@ export default defineEventHandler(async (event) => {
   try {
     const { user } = await requireUserSession(event);
 
+    // Support both ?q= and ?search=
+    const query = getQuery(event);
+    const search = ((query.q ?? query.search) as string | undefined)?.trim();
+
     const existingRelations = await prisma.friendRequest.findMany({
       where: {
         OR: [{ senderId: user.id }, { receiverId: user.id }],
@@ -18,8 +22,21 @@ export default defineEventHandler(async (event) => {
     });
 
     const suggestions = await prisma.user.findMany({
-      where: { id: { notIn: Array.from(excludedIds) } },
+      where: {
+        id: { notIn: Array.from(excludedIds) },
+        ...(search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: "insensitive" } },
+                { lastName: { contains: search, mode: "insensitive" } },
+                { username: { contains: search, mode: "insensitive" } },
+              ],
+            }
+          : {}),
+      },
       take: 10,
+      // Optional: order by relevance / newest / etc.
+      // orderBy: { createdAt: "desc" },
     });
 
     return {

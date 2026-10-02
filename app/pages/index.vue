@@ -16,7 +16,7 @@ import { toast } from 'vue-sonner';
 
 type FriendProfile = Person & { username: string };
 type FriendRequest = { id: string; person: Person; username: string; time: string };
-type Message = { id: number; senderId: string; text: string; time: string; read?: boolean };
+type Message = { id: number; senderId: string; text: string; time: string; read?: boolean; readAt?: string | Date };
 type Conversation = {
   id: string;
   title: string;
@@ -63,6 +63,11 @@ const friendSearchPeople: FriendProfile[] = [
 ];
 
 // Suggested friends
+const { user, clear } = useUserSession();
+const { subscribeToConversation, subscribeToUserChannel } = usePusher();
+let unsubscribeUserChannel: (() => void) | undefined;
+let unsubscribeConversationChannel: (() => void) | undefined;
+
 const { call, isLoading } = useApi();
 const suggestedFriends = ref<Person[]>([]);
 const pendingRequests = ref<FriendRequest[]>([]);
@@ -157,7 +162,12 @@ async function loadConversations(query = '') {
     const response = await $fetch<Omit<Conversation, 'messages'>[]>('/api/conversations', {
       query: { q: query || undefined },
     });
-    conversations.value = response.map((conversation) => ({ ...conversation, messages: [] }));
+    conversations.value = response.map((conversation) => {
+      for (const member of conversation.members) {
+        people[member.id] = member;
+      }
+      return { ...conversation, messages: [] };
+    });
   } catch (err) {
     console.error('Load conversations failed:', err);
     toast.error('Could not load conversations');
@@ -296,15 +306,53 @@ function backToList() {
   showConversation.value = false;
 }
 
-const { clear } = useUserSession()
-
 async function handleLogout() {
   await clear()
   await navigateTo('/login')
 }
 
-watch(activeId, () => {
+function appendRealtimeMessage(conversationId: string, incoming: any) {
+  const list = messagesByConversation.value[conversationId] ?? [];
+  if (list.some((message) => message.id === incoming.id)) return;
+  const senderId = incoming.senderId === user.value?.id ? 'me' : incoming.senderId;
+  messagesByConversation.value[conversationId] = [
+    ...list,
+    { ...incoming, senderId, time: formatTime(incoming.createdAt) },
+  ];
+  nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999, behavior: 'smooth' }));
+}
+
+function applyConversationUpdated(payload: any) {
+  const conversationId = payload?.id ?? payload?.conversationId;
+  const conversation = conversations.value.find((item) => item.id === conversationId);
+  if (!conversation) return;
+  conversation.preview = payload.preview;
+  conversation.time = payload.time;
+  if (activeId.value === conversationId) {
+    markRead(conversationId);
+    return;
+  }
+  conversation.unread = payload.unread;
+}
+
+function applyMessagesRead(conversationId: string, payload: { readerId: string; readAt: string | Date }) {
+  const list = messagesByConversation.value[conversationId];
+  if (!list) return;
+  messagesByConversation.value[conversationId] = list.map((message) => {
+    if (message.senderId === payload.readerId) return message;
+    return { ...message, read: true, readAt: payload.readAt };
+  });
+}
+
+watch(activeId, (id) => {
   nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 }));
+  unsubscribeConversationChannel?.();
+  unsubscribeConversationChannel = undefined;
+  if (!id || id.startsWith('direct-')) return;
+  unsubscribeConversationChannel = subscribeToConversation(id, {
+    'message:new': (incoming) => appendRealtimeMessage(id, incoming),
+    'messages:read': (payload) => applyMessagesRead(id, payload as { readerId: string; readAt: string | Date }),
+  });
 });
 
 let searchTimer: ReturnType<typeof setTimeout>;
@@ -316,6 +364,17 @@ watch(search, (query) => {
 onMounted(() => {
   loadFriends();
   loadConversations();
+  const userId = user.value?.id;
+  if (userId) {
+    unsubscribeUserChannel = subscribeToUserChannel(userId, {
+      'conversation:updated': applyConversationUpdated,
+    });
+  }
+});
+
+onUnmounted(() => {
+  unsubscribeUserChannel?.();
+  unsubscribeConversationChannel?.();
 });
 
 </script>

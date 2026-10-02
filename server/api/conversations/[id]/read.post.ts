@@ -1,3 +1,5 @@
+import pusher from "~~/server/utils/pusher";
+
 export default defineEventHandler(async (event) => {
   const { user } = await requireUserSession(event);
   const id = getRouterParam(event, "id")!;
@@ -12,10 +14,20 @@ export default defineEventHandler(async (event) => {
       statusMessage: "Conversation not found",
     });
 
+  const readAt = new Date();
   await prisma.message.updateMany({
     where: { conversationId: id, senderId: { not: user.id }, readAt: null },
-    data: { readAt: new Date() },
+    data: { readAt },
   });
+
+  try {
+    await pusher.trigger(`private-conversation-${id}`, "messages:read", {
+      readerId: user.id,
+      readAt,
+    });
+  } catch (err) {
+    console.error("Pusher trigger failed:", err);
+  }
 
   return { status: true };
 });
