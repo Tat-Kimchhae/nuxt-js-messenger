@@ -52,6 +52,7 @@ const isDetailsOpen = ref(false);
 const showFriendPanel = ref(false);
 const colorMode = useColorMode();
 const friends = ref<Person[]>([]);
+const isLoadingFriends = ref(true);
 const messagesByConversation = ref<Record<string, Message[]>>({});
 
 const friendSearchPeople: FriendProfile[] = [
@@ -154,6 +155,8 @@ async function loadFriends() {
   } catch (err) {
     console.error('Load friends failed:', err);
     toast.error('Could not load friends');
+  } finally {
+    isLoadingFriends.value = false;
   }
 }
 
@@ -429,7 +432,7 @@ onUnmounted(() => {
             </button>
           </div>
           <ConversationList :conversations="conversations" :active-id="activeId" @select="selectConversation" />
-          <FriendsList :friends="friends" @start="startFriendConversation" />
+          <FriendsList :friends="friends" :is-loading="isLoadingFriends" @start="startFriendConversation" />
           <div class="mt-auto border-t border-line px-5 py-4 sm:px-6">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-3">

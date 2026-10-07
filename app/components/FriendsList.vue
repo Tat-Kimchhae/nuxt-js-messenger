@@ -3,8 +3,9 @@ import Avatar from './Avatar.vue';
 import AppIcon from './AppIcon.vue';
 import type { Person } from '~~/types/person.ts';
 
-defineProps<{ friends: Person[] }>();
+defineProps<{ friends: Person[]; isLoading: boolean }>();
 const emit = defineEmits<{ start: [person: Person] }>();
+const friendSkeletonRows = Array.from({ length: 6 }, (_, index) => index);
 </script>
 
 <template>
@@ -17,8 +18,25 @@ const emit = defineEmits<{ start: [person: Person] }>();
       <span class="font-mono text-[10px] text-ink-faint">{{ friends.length }}</span>
     </div>
 
-    <div class="scrollbar-thin max-h-[190px] space-y-0.5 overflow-y-auto">
+    <div class="scrollbar-thin max-h-[190px] space-y-0.5 overflow-y-auto" :aria-busy="isLoading && !friends.length">
+      <template v-if="isLoading && !friends.length">
+        <div
+          v-for="row in friendSkeletonRows"
+          :key="row"
+          aria-hidden="true"
+          class="flex animate-pulse items-center gap-3 rounded-[13px] px-3 py-2"
+        >
+          <div class="h-8 w-8 shrink-0 rounded-full bg-black/10 dark:bg-white/10" />
+          <span class="min-w-0 flex-1">
+            <span class="block h-3 w-24 rounded bg-black/10 dark:bg-white/10" />
+            <span class="mt-1.5 block h-2.5 w-16 rounded bg-black/10 dark:bg-white/10" />
+          </span>
+          <span class="h-7 w-7 shrink-0" />
+        </div>
+      </template>
+      <p v-else-if="!friends.length" class="px-3 py-2 text-[12px] text-ink-faint">No friends yet</p>
       <button
+        v-else
         v-for="friend in friends"
         :key="friend.id"
         :data-testid="`button-friend-${friend.id}`"
