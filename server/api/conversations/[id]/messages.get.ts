@@ -27,6 +27,8 @@ export default defineEventHandler(async (event) => {
       id: true,
       body: true,
       image: true,
+      audio: true,
+      audioDurationSeconds: true,
       senderId: true,
       createdAt: true,
       readAt: true,

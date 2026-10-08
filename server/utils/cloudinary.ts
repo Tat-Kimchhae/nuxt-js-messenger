@@ -17,3 +17,14 @@ export function uploadImage(buffer: Buffer): Promise<string> {
       .end(buffer)
   })
 }
+
+export function uploadAudio(buffer: Buffer): Promise<string> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader
+      .upload_stream({ folder: 'messenger', resource_type: 'video' }, (err, result) => {
+        if (err || !result) return reject(err ?? new Error('Upload failed'))
+        resolve(result.secure_url)
+      })
+      .end(buffer)
+  })
+}

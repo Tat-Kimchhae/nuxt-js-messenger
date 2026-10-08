@@ -16,7 +16,16 @@ import { toast } from 'vue-sonner';
 
 type FriendProfile = Person & { username: string };
 type FriendRequest = { id: string; person: Person; username: string; time: string };
-type Message = { id: number; senderId: string; text: string; time: string; read?: boolean; readAt?: string | Date };
+type Message = {
+  id: number;
+  senderId: string;
+  text: string;
+  time: string;
+  audio?: string;
+  audioDurationSeconds?: number;
+  read?: boolean;
+  readAt?: string | Date;
+};
 type Conversation = {
   id: string;
   title: string;
@@ -45,6 +54,7 @@ const people: Record<string, Person> = {
 };
 
 const conversations = ref<Conversation[]>([]);
+const isCreatingFriendConversation = ref(false);
 const activeId = ref('');
 const search = ref('');
 const showConversation = ref(false);
@@ -243,10 +253,10 @@ function selectConversation(id: string) {
   showConversation.value = true;
   const conversation = conversations.value.find((item) => item.id === id);
   if (conversation) conversation.unread = 0;
-  if (!id.startsWith('direct-')) loadMessages(id).then(() => markRead(id));
+  loadMessages(id).then(() => markRead(id));
 }
 
-function startFriendConversation(person: Person) {
+async function startFriendConversation(person: Person) {
   const existingConversation = conversations.value.find(
     (conversation) => conversation.kind === 'direct' && conversation.members.some((member) => member.id === person.id),
   );
@@ -255,19 +265,31 @@ function startFriendConversation(person: Person) {
     return;
   }
 
-  const newConversation: Conversation = {
-    id: `direct-${person.id}`,
-    title: person.name,
-    kind: 'direct',
-    members: [person],
-    preview: 'Start a new conversation',
-    time: 'New',
-    unread: 0,
-    accent: person.color,
-    messages: [],
-  };
-  conversations.value.unshift(newConversation);
-  selectConversation(newConversation.id);
+  if (isCreatingFriendConversation.value) return;
+
+  isCreatingFriendConversation.value = true;
+  try {
+    const serializedConversation = await $fetch<Omit<Conversation, 'messages'>>('/api/conversations', {
+      method: 'POST',
+      body: { friendId: person.id },
+    });
+    for (const member of serializedConversation.members) {
+      people[member.id] = member;
+    }
+
+    const existingConversationById = conversations.value.find(
+      (conversation) => conversation.id === serializedConversation.id,
+    );
+    if (!existingConversationById) {
+      conversations.value.unshift({ ...serializedConversation, messages: [] });
+    }
+    selectConversation(serializedConversation.id);
+  } catch (error: any) {
+    console.error('Create conversation failed:', error);
+    toast.error(error?.data?.statusMessage ?? 'Could not start conversation');
+  } finally {
+    isCreatingFriendConversation.value = false;
+  }
 }
 
 const formatTime = (date: string | Date) => new Date(date).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
@@ -291,12 +313,63 @@ async function handleSend(text: string, file?: File) {
       body,
     });
 
-    addMessageIfMissing(conversation.id, message);
-    const target = conversations.value.find((c) => c.id === conversation.id);
-    if (target) { target.preview = message.text || 'Sent a photo'; target.time = 'Now'; }
+    updateConversationAfterSend(conversation.id, message);
   } catch (err: any) {
     console.error('Send failed:', err);
     toast.error(err?.data?.statusMessage ?? 'Could not send message');
+  }
+}
+
+async function handleSendVoice(audioBlob: Blob, durationSeconds: number) {
+  const conversation = activeConversation.value;
+  if (!conversation) return;
+
+  const audioFileExtension = getAudioFileExtension(audioBlob.type);
+  const audioFile = new File(
+    [audioBlob],
+    `voice-message.${audioFileExtension}`,
+    { type: audioBlob.type },
+  );
+  const formData = new FormData();
+  formData.append('audio', audioFile);
+  formData.append('audioDurationSeconds', String(durationSeconds));
+
+  try {
+    const message = await $fetch<any>(`/api/conversations/${conversation.id}/messages`, {
+      method: 'POST',
+      body: formData,
+    });
+
+    updateConversationAfterSend(conversation.id, message);
+  } catch (err: any) {
+    console.error('Send failed:', err);
+    toast.error(err?.data?.statusMessage ?? 'Could not send message');
+  }
+}
+
+function getAudioFileExtension(audioType: string) {
+  const audioSubtype = audioType.split('/')[1]?.split(';')[0]?.toLowerCase();
+  const knownAudioExtensions: Record<string, string> = {
+    '3gpp': '3gp',
+    '3gpp2': '3g2',
+    'mpeg': 'mp3',
+    'mp4': 'm4a',
+    'wave': 'wav',
+    'wav': 'wav',
+    'x-m4a': 'm4a',
+    'x-wav': 'wav',
+  };
+
+  return knownAudioExtensions[audioSubtype ?? ''] ?? audioSubtype?.replace(/^x-/, '') ?? 'webm';
+}
+
+function updateConversationAfterSend(conversationId: string, message: any) {
+  addMessageIfMissing(conversationId, message);
+  const targetConversation = conversations.value.find((item) => item.id === conversationId);
+  if (targetConversation) {
+    targetConversation.preview =
+      message.text || (message.image ? 'Sent a photo' : message.audio ? 'Sent a voice message' : '');
+    targetConversation.time = 'Now';
   }
 }
 
@@ -346,7 +419,7 @@ watch(activeId, (id) => {
   nextTick(() => document.querySelector('[data-message-scroll]')?.scrollTo({ top: 99999 }));
   unsubscribeConversationChannel?.();
   unsubscribeConversationChannel = undefined;
-  if (!id || id.startsWith('direct-')) return;
+  if (!id) return;
   unsubscribeConversationChannel = subscribeToConversation(id, {
     'message:new': (incoming) => addMessageIfMissing(id, incoming),
     'messages:read': (payload) => applyMessagesRead(id, payload as { readerId: string; readAt: string | Date }),
@@ -455,7 +528,7 @@ onUnmounted(() => {
             <ChatHeader :conversation="activeConversation" :details-open="isDetailsOpen" @back="backToList"
               @toggle-details="isDetailsOpen = !isDetailsOpen" />
             <MessageThread @load-older="loadOlder" :conversation="activeConversation" :people="people" :me="me" />
-            <Composer @send="handleSend" />
+            <Composer @send="handleSend" @send-voice="handleSendVoice" />
             <div v-if="isDetailsOpen"
               class="absolute right-4 top-[76px] z-10 w-[250px] rounded-2xl border border-line bg-surface-popover p-4 shadow-2xl shadow-black/10 dark:bg-[#24242b] dark:shadow-black/30">
               <div class="mb-4 flex items-center justify-between">

@@ -52,6 +52,16 @@ defineProps<{ name: string; size?: number }>();
       <path d="m22 2-7 20-4-9-9-4Z" />
       <path d="M22 2 11 13" />
     </template>
+    <template v-else-if="name === 'mic'">
+      <rect x="9" y="2" width="6" height="12" rx="3" />
+      <path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8" />
+    </template>
+    <template v-else-if="name === 'play'">
+      <path d="m8 5 12 7-12 7Z" />
+    </template>
+    <template v-else-if="name === 'pause'">
+      <path d="M8 5h3v14H8zM15 5h3v14h-3z" />
+    </template>
     <template v-else-if="name === 'close'">
       <path d="m6 6 12 12M18 6 6 18" />
     </template>
