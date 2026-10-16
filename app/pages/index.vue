@@ -38,7 +38,6 @@ type Conversation = {
   accent: string;
 };
 
-const me: Person = { id: 'me', name: 'You', initials: 'AR', color: '#b49bff' };
 const people: Record<string, Person> = {
   maya: { id: 'maya', name: 'Maya Chen', initials: 'MC', color: '#ff8975', online: true },
   theo: { id: 'theo', name: 'Theo Martin', initials: 'TM', color: '#87e6ce', online: false },
@@ -60,7 +59,7 @@ const search = ref('');
 const showConversation = ref(false);
 const isDetailsOpen = ref(false);
 const showFriendPanel = ref(false);
-const colorMode = useColorMode();
+const { colorMode, toggle: toggleColorMode } = useThemeTransition();
 const friends = ref<Person[]>([]);
 const isLoadingFriends = ref(true);
 const messagesByConversation = ref<Record<string, Message[]>>({});
@@ -75,6 +74,20 @@ const friendSearchPeople: FriendProfile[] = [
 
 // Suggested friends
 const { user, clear } = useUserSession();
+const me = computed<Person>(() => {
+  const firstName = user.value?.firstName ?? '';
+  const lastName = user.value?.lastName ?? '';
+  const id = user.value?.id ?? 'me';
+
+  return {
+    id,
+    name: `${firstName} ${lastName}`.trim(),
+    username: user.value?.username ?? '',
+    avatarUrl: user.value?.avatarUrl ?? null,
+    initials: `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase(),
+    color: stringToColor(id),
+  };
+});
 const { subscribeToConversation, subscribeToUserChannel } = usePusher();
 let unsubscribeUserChannel: (() => void) | undefined;
 let unsubscribeConversationChannel: (() => void) | undefined;
@@ -108,10 +121,6 @@ watch(showFriendPanel, async (open) => {
 const sentRequests = ref<FriendRequest[]>([
   { id: 'sent-nora', person: people.nora, username: '@norapatel', time: '3d ago' },
 ]);
-
-function toggleColorMode() {
-  colorMode.preference.value = colorMode.value.value === 'dark' ? 'light' : 'dark';
-}
 
 async function addFriend(person: Person) {
   try {
@@ -382,6 +391,14 @@ async function handleLogout() {
   await navigateTo('/login')
 }
 
+function stringToColor(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++)
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = hash % 360;
+  return `hsl(${hue}, 70%, 75%)`;
+}
+
 function addMessageIfMissing(conversationId: string, incoming: any) {
   const list = messagesByConversation.value[conversationId] ?? [];
   if (list.some((message) => message.id === incoming.id)) return;
@@ -511,13 +528,19 @@ onUnmounted(() => {
               <div class="flex items-center gap-3">
                 <Avatar :person="me" :size="34" />
                 <div>
-                  <p class="text-[13px] font-medium">Ari Rhodes</p>
+                  <p class="text-[13px] font-medium">{{ user?.firstName }} {{ user?.lastName }}</p>
                   <p class="font-mono text-[10px] text-mint">available</p>
                 </div>
               </div>
-              <button data-testid="button-settings" class="text-ink-faint transition hover:text-ink" title="Settings">
-                <AppIcon name="settings" :size="17" />
-              </button>
+              <div class="flex items-center gap-3">
+                <button data-testid="button-logout" class="text-ink-faint transition hover:text-red-500"
+                  title="Log out" aria-label="Log out" @click="handleLogout">
+                  <AppIcon name="logout" :size="17" />
+                </button>
+                <button data-testid="button-settings" class="text-ink-faint transition hover:text-ink" title="Settings">
+                  <AppIcon name="settings" :size="17" />
+                </button>
+              </div>
             </div>
           </div>
         </aside>
@@ -560,14 +583,6 @@ onUnmounted(() => {
                 <AppIcon name="search" :size="15" /> Search in conversation
               </button>
 
-              <!-- Section Divider -->
-              <div class="my-1 h-px bg-black/5 dark:bg-white/5"></div>
-
-              <button data-testid="button-logout"
-                class="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-[12px] text-red-600/80 transition hover:bg-red-500/10 hover:text-red-600 dark:text-red-400/80 dark:hover:bg-red-500/20 dark:hover:text-red-400"
-                @click="handleLogout">
-                <AppIcon name="logout" :size="15" /> Logout
-              </button>
             </div>
           </template>
           <div v-else class="grid flex-1 place-items-center p-8 text-center">
