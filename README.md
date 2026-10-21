@@ -2,6 +2,10 @@
 
 A real-time messaging application built with Nuxt and Vue. It includes user authentication, one-to-one and group conversations, friend requests, and messages with image and audio support.
 
+## Demo
+
+[Try the live demo](https://nuxt-js-messenger.vercel.app/login).
+
 ## Technology and tools
 
 ### Application
