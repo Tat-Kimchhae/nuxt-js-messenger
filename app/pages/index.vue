@@ -77,15 +77,15 @@ const { user, clear } = useUserSession();
 const me = computed<Person>(() => {
   const firstName = user.value?.firstName ?? '';
   const lastName = user.value?.lastName ?? '';
-  const id = user.value?.id ?? 'me';
+  const realId = user.value?.id ?? 'me';
 
   return {
-    id,
+    id: 'me',
     name: `${firstName} ${lastName}`.trim(),
     username: user.value?.username ?? '',
     avatarUrl: user.value?.avatarUrl ?? null,
     initials: `${firstName[0] ?? ''}${lastName[0] ?? ''}`.toUpperCase(),
-    color: stringToColor(id),
+    color: stringToColor(realId),
   };
 });
 const { subscribeToConversation, subscribeToUserChannel } = usePusher();
